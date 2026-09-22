@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # Repository hygiene: formatting, generated package docs, and dependency
+  # tidiness. The git-diff comparisons would only produce line-ending noise on
+  # Windows, so they run once on Linux.
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Check dependencies
+        run: |
+          go mod tidy
+          if ! git diff --exit-code; then
+            echo ""
+            echo "❌ go.mod or go.sum is out of date. Run 'go mod tidy' locally and commit the result."
+            exit 1
+          fi
+          echo "✅ Dependencies are up to date."
+
+      - name: Check formatting
+        run: |
+          make fmt
+          if ! git diff --exit-code; then
+            echo ""
+            echo "❌ Code is not formatted. Run 'make fmt' locally and commit the result."
+            exit 1
+          fi
+          echo "✅ Code is properly formatted."
+
+      - name: Check docs
+        run: |
+          make docs
+          if ! git diff --exit-code; then
+            echo ""
+            echo "❌ Documentation is out of date. Run 'make docs' locally and commit the result."
+            exit 1
+          fi
+          echo "✅ Documentation is up to date."
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+
+      - name: Test
+        run: go test ./... -race -cover
