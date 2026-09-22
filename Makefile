@@ -136,7 +136,8 @@ deps: ## Download and tidy dependencies
 	@go mod download
 	@go mod tidy
 
-docs: $(GOMARKDOC) ## Generate documentation with gomarkdoc
+docs: $(GOMARKDOC) ## Generate package docs and the demo's output
+	@go run ./demo
 	@$(GOMARKDOC) -e \
 		--repository.url https://github.com/lucasassuncao/docgen \
 		--repository.default-branch main \

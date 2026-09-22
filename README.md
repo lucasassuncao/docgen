@@ -20,16 +20,12 @@
 
 | | |
 | --- | --- |
-| 🪞 **One method, many readers** | `Metadata()` returns a plain `map[string]any`, not a package type. Any number of tools can read the same method, and none of them has to import another's types. |
-| 🧬 **Structure from the code** | Field names, kinds and nesting come from reflection over yaml tags. You describe what a field *means*, never what it *is*. |
-| 🔁 **Declared once** | Each type documents its own direct fields. A nested struct is picked up wherever it appears, so the declaration is never repeated, and a self-referential type just works. |
-| 📐 **Layouts you choose** | One page per type, one per field, or everything in one file. Flat, or a directory per entry named after the config key. |
-| 📊 **Columns you choose** | Nine of them. Show allowed values and constraints, or keep the five-column table you already have. |
-| 🧾 **A schema a language server can use** | Draft 2020-12, with recursion as `$defs`/`$ref` instead of expansion, and constraints that have no keyword surfaced in `description` rather than dropped. |
-| 🚨 **Typos fail loudly** | A metadata key that matches no field is an error naming the type and the key, at startup. It never becomes silently dead documentation. |
-| 🧩 **Union types welcome** | A value that is a string *or* an object has no readable shape. Its metadata declares one by carrying `kind`. |
-| 🙈 **Hide what is not public** | `Entry.Hidden` drops a field from every output at once. It stays valid in the file; it just stops being documented. |
-| 🪶 **One dependency** | `gopkg.in/yaml.v3`. Nothing else. |
+| **One method, many readers** | `Metadata()` returns a plain `map[string]any`. Any number of tools read it, none imports another's types. |
+| **Structure from the code** | Names, kinds and nesting come from the yaml tags. You describe what a field *means*, never what it *is*. |
+| **Declared once** | Each type documents its own direct fields. A nested struct is picked up wherever it appears; a recursive one just works. |
+| **Layouts and columns you choose** | One page per type, per field, or one file. Show allowed values and constraints, or keep the default five columns. |
+| **Typos fail loudly** | A key matching no field is an error naming the type and the key, at startup. It never becomes dead documentation. |
+| **One dependency** | `gopkg.in/yaml.v3`. |
 
 ## Install
 
@@ -37,7 +33,7 @@
 go get github.com/lucasassuncao/docgen
 ```
 
-## Quick start
+## Usage
 
 ```go
 type Config struct {
@@ -61,36 +57,53 @@ docgen.Generate(
 )
 ```
 
-Each type declares only its own direct fields. A nested struct that has its own `Metadata` is picked up wherever it appears, so the declaration is never repeated.
+A map literal is not compiler-checked. Declare your own struct with yaml tags
+and it is again, while `Metadata()` stays a plain map:
 
-## Why a map
+```go
+// your package - imports nothing
+type meta struct {
+    Description string `yaml:"description,omitempty"`
+    Required    bool   `yaml:"required,omitempty"`
+}
 
-The method returns `map[string]any` rather than a package type so the same `Metadata()` can serve more than one consumer without any of them importing another's types. A Go method has one return type; a package type would force that choice on every reader.
+"name": meta{Description: "Job name.", Required: true},
+```
 
-The cost is that the compiler does not check the keys. It is checked at startup instead: an unknown key fails `Describe` with the type and the key named.
+Declare only the keys you use. A key matching no field fails at startup:
 
 ```
 metadata for Config: line 3: field descriptoin not found in type docgen.Node
 ```
 
-To keep the compiler in the loop, declare your own struct with yaml tags. The map is still plain, so nothing changes on this side:
+## What comes out
 
-```go
-// your package - imports nothing
-type meta struct {
-    Description string   `yaml:"description,omitempty"`
-    Required    bool     `yaml:"required,omitempty"`
-    OneOf       []string `yaml:"oneof,omitempty"`
-}
+[`demo/`](demo) is a small config documented end to end: the types and their
+`Metadata()` in [`demo/main.go`](demo/main.go), the committed output in
+[`demo/docs/`](demo/docs). Run it with `go run ./demo`.
 
-func (Config) Metadata() map[string]any {
-    return map[string]any{
-        "name": meta{Description: "Job name.", Required: true},
-    }
-}
+The table of a `Config` whose `server` and `logging` are split onto pages of
+their own:
+
+```markdown
+| Name | Type | Description | Required | Default |
+|------|------|-------------|----------|---------|
+| name | string | Name of the service, used in logs and metrics. | Yes | - |
+| [server](./server.md) | object | Where the HTTP server binds and who may call it. | No | - |
+| [logging](./logging.md) | object | Log destination and severity. | No | - |
 ```
 
-Declare only the keys you use.
+And the same `logging.level` in the schema, from `oneof`, `default` and
+`required`:
+
+```json
+"level": {
+  "default": "info",
+  "description": "Minimum severity to emit.",
+  "enum": ["debug", "info", "warn", "error"],
+  "type": "string"
+}
+```
 
 ## Keys
 
@@ -100,6 +113,7 @@ Declare only the keys you use.
 | `type` | string | type label; derived from the field when empty |
 | `required` | bool | field must be present |
 | `default` | string | documented default |
+| `example` | string | yaml snippet shown verbatim |
 | `oneof`, `notoneof` | []string | allowed / denied values |
 | `min`, `max` | string | numeric, duration or size bounds |
 | `pattern` | string | RE2 regular expression |
@@ -109,11 +123,15 @@ Declare only the keys you use.
 | `formats` | []string | accepted string formats, OR semantics |
 | `deprecated` | string | migration hint; marks the field deprecated |
 | `multiline` | bool | documents the field as a multiline string |
-| `children` | map | metadata for nested fields, when the type cannot declare it |
+| `children` | map | metadata for nested fields the type cannot declare |
+| `kind`, `scalar` | string | the shape of a type reflection cannot read |
 
-### Declaring a shape reflection cannot read
+`presentation`, `snippet` and `prechecked` are accepted and ignored: a key
+another reader of the same `Metadata()` needs is not an error here.
 
-A union type, a value that is a string or an object, has no readable struct shape. Its `Metadata` entries declare one by carrying `kind`:
+A union type — a value that is a string *or* an object — has no readable struct
+shape. Its entries declare one by carrying `kind`, one of `primitive`, `object`,
+`list`, `dictionary`, `variant`, `any`:
 
 ```go
 func (MountOrString) Metadata() map[string]any {
@@ -123,13 +141,6 @@ func (MountOrString) Metadata() map[string]any {
     }
 }
 ```
-
-`kind` is one of `primitive`, `object`, `list`, `dictionary`, `variant`, `any`.
-`scalar` is one of `string`, `int`, `uint`, `bool`, `float`, `duration`.
-
-### Keys docgen ignores
-
-`presentation`, `snippet` and `prechecked` are accepted and ignored. A key another reader of the same `Metadata()` needs is not an error here.
 
 ## Outputs
 
@@ -143,38 +154,18 @@ Every output is opt-in; calling `Generate` with none is an error.
 | `WithIndex(dir)` | `README.md` linking the generated pages |
 | `WithMetadata(src)` | overrides the metadata of every entry |
 
-## Markdown layout
+## Layout
 
 ```go
 docgen.WithMarkdown("docs/attributes", docgen.Layout{
     Folders: docgen.FolderPerEntry,  // or FolderFlat (default)
     Files:   docgen.FilePerField,    // or FilePerEntry (default), FileSingle
+    Columns: []docgen.Column{docgen.ColName, docgen.ColDescription, docgen.ColValues},
 })
 ```
 
-`Entry.Name` names the page, `Entry.Slug` the directory. Set `Slug` to the yaml key the struct answers to, so the directories read like the config file.
-
-**`FolderFlat` + `FilePerEntry`**, the default:
-
-```
-docs/attributes/
-├── configuration.md
-└── category.md
-```
-
-**`FolderFlat` + `FilePerField`**:
-
-```
-docs/attributes/
-├── configuration.md   ← links to its object fields
-├── logging.md
-├── watch.md
-├── category.md
-├── source.md
-└── hooks.md
-```
-
-**`FolderPerEntry` + `FilePerField`**:
+`Entry.Name` names the page, `Entry.Slug` the directory. Set `Slug` to the yaml
+key the struct answers to, so the directories read like the config file:
 
 ```
 docs/attributes/
@@ -182,94 +173,37 @@ docs/attributes/
 │   └── configuration.md
 └── categories/          ← Slug: "categories"
     ├── category.md      ← Name: "Category"
-    ├── source.md
-    ├── destination.md
+    ├── source.md        ← FilePerField
     └── hooks.md
 ```
 
-**`FileSingle`** ignores `Folders` and writes one `reference.md` holding every entry.
+`FolderFlat` drops the directories, `FilePerEntry` the per-field pages, and
+`FileSingle` writes one `reference.md` holding everything.
 
-Only object-shaped fields get a page, and the split stops one level down: an object nested deeper stays inline in its parent's page. That is what keeps two same-named fields on different branches from overwriting each other.
+Only object-shaped fields get a page, and the split stops one level down: an
+object nested deeper stays inline. That is what keeps two same-named fields on
+different branches from overwriting each other.
 
-`Entry.SplitStructs` overrides the file mode for one entry: `&false` keeps it on a single page while its neighbours split.
+Columns are `ColName`, `ColType`, `ColFormat`, `ColDescription`, `ColRequired`,
+`ColDefault`, `ColValues`, `ColConstraints`, `ColDeprecated`. The last four,
+plus `ColFormat`, disappear from a table no field in it fills. `nil` is the
+default five.
 
-Every page the layout writes is listed in `WithIndex`, with links relative to where it landed.
-
-### Columns
-
-```go
-docgen.Layout{Columns: []docgen.Column{
-    docgen.ColName, docgen.ColDescription, docgen.ColValues, docgen.ColConstraints,
-}}
-```
-
-| column | shows |
-| --- | --- |
-| `ColName`, `ColType`, `ColDescription`, `ColRequired`, `ColDefault` | the default five |
-| `ColFormat` | the declared format names |
-| `ColValues` | the allowed values, from `oneof` |
-| `ColConstraints` | `min 0, max 10`, `min items 1, unique`, `` pattern `^x$` `` |
-| `ColDeprecated` | the migration hint |
-
-`ColFormat`, `ColValues`, `ColConstraints` and `ColDeprecated` disappear from a table no field in it fills.
-
-### Deriving the entries
-
-`EntriesOf` makes one entry per object-shaped top-level field, slugged by its yaml name:
+## The rest of the surface
 
 ```go
-docgen.Generate(docgen.EntriesOf(models.Config{}),
-    docgen.WithMarkdown(dir, docgen.Layout{Folders: docgen.FolderPerEntry}),
-)
+docgen.EntriesOf(models.Config{})   // one entry per top-level object field
+docgen.Entry{Hidden: []string{"internal", "source.debug"}}  // out of every output
+docgen.Entry{SplitStructs: &no}     // override the layout for one entry
+docgen.Entry{Fields: …, Metadata: …} // supply what reflection cannot read
 ```
 
-## Hiding a field
-
-```go
-docgen.Entry{Config: Config{}, Hidden: []string{"internal", "source.debug"}}
-```
-
-Dropped from the markdown *and* the schema. The field stays valid in the file, the schema never emits `additionalProperties: false`, it just loses its autocomplete.
-
-## Supplying structure or metadata directly
-
-`Entry.Fields` and `Entry.Metadata` replace what reflection would read:
-
-```go
-docgen.Entry{
-    Name:     "Config",
-    Fields:   []docgen.Field{{YAMLName: "name", Kind: docgen.KindPrimitive, Scalar: "string"}},
-    Metadata: docgen.MetaFunc(func(path string) docgen.FieldMeta { ... }),
-}
-```
-
-## How it is built
-
-Each generator is its own package and can be called without the others. They share the vocabulary in `spec` and nothing else.
-
-| package | does |
-| --- | --- |
-| [`spec`](spec) | `Field`, `FieldMeta`, `Node`, `Provider`, `Describe` |
-| [`markdown`](markdown) | the reference pages, `Layout`, `Column` |
-| [`jsonschema`](jsonschema) | the JSON Schema |
-| [`examples`](examples) | the preset pages |
-| [`index`](index) | the README linking them |
-| [`presets`](presets) | building a preset source from Go structs |
-
-```
-spec        → (nothing)
-markdown    → spec
-jsonschema  → spec
-examples    → spec
-index       → spec
-docgen      → all of them
-```
+A hidden field stays valid in the file — the schema never emits
+`additionalProperties: false` — it just stops being documented.
 
 ## Non-goals
 
-- **Rendering HTML or PDF.** Markdown and a JSON Schema are what a repository and a language server read.
-- **Deriving metadata from struct tags.** A description belongs in prose, not in a tag; and tags cannot express what a nested type already declared.
-- **Splitting recursively.** A page per object at any depth collides the moment two branches name a field the same. The split stops one level down.
+HTML or PDF output, and deriving metadata from struct tags.
 
 ## License
 

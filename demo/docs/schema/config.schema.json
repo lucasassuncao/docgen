@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "logging": {
+      "description": "Log destination and severity.",
+      "properties": {
+        "file": {
+          "description": "Path to the log file. Empty writes to stdout. Format: directory",
+          "examples": [
+            "file: /var/log/billing-api.log"
+          ],
+          "type": "string"
+        },
+        "level": {
+          "default": "info",
+          "description": "Minimum severity to emit.",
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ],
+          "examples": [
+            "level: info"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "level"
+      ],
+      "type": "object"
+    },
+    "name": {
+      "description": "Name of the service, used in logs and metrics.",
+      "examples": [
+        "name: billing-api"
+      ],
+      "type": "string"
+    },
+    "server": {
+      "description": "Where the HTTP server binds and who may call it.",
+      "properties": {
+        "host": {
+          "default": "localhost",
+          "description": "Address to bind. Use 0.0.0.0 to accept connections from outside the host.",
+          "examples": [
+            "host: 0.0.0.0"
+          ],
+          "type": "string"
+        },
+        "origins": {
+          "description": "Origins allowed by CORS. Empty allows none.",
+          "examples": [
+            "origins:\n  - https://app.example.com"
+          ],
+          "format": "uri",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "port": {
+          "default": "8080",
+          "description": "TCP port to listen on. Ports below 1024 need elevated privileges.",
+          "examples": [
+            "port: 8080"
+          ],
+          "maximum": 65535,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "type": "object"
+}
