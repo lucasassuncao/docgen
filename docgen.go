@@ -6,6 +6,7 @@ package docgen
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/lucasassuncao/docgen/examples"
@@ -81,16 +82,22 @@ type Entry struct {
 	Slug     string
 	Fields   []Field
 	Metadata MetadataSource
-	// Hidden are dot-joined field paths left out of every output: the markdown,
-	// the JSON Schema, all of it. The field stays valid in the file; it just
-	// stops being documented.
-	Hidden []string
-	// SplitStructs overrides the layout's FileMode for this entry alone; nil
-	// follows the layout.
-	SplitStructs *bool
-	// RecursionLimit is how many extra levels a self-referential type expands.
-	// nil is 1; 0 stops at the second visit. JSON Schema is unaffected.
-	RecursionLimit *int
+
+	Hidden         []string // Hidden are dot-joined field paths left out of every output.
+	SplitStructs   *bool    // SplitStructs overrides the layout's FileMode for this entry alone; nil follows the layout.
+	RecursionLimit *int     // RecursionLimit is how many extra levels a self-referential type expands. nil is 1; 0 stops at the second visit.
+}
+
+// EntriesOf makes one Entry per object-shaped top-level field of root, so a
+// config file documents itself: the slug is the field's yaml name, the title
+// its Go type name. root itself is never an entry.
+func EntriesOf(root any) []Entry {
+	objects := spec.TopLevelObjects(root)
+	out := make([]Entry, 0, len(objects))
+	for _, o := range objects {
+		out = append(out, Entry{Config: o.Zero, Name: o.TypeName, Slug: o.YAMLName})
+	}
+	return out
 }
 
 // config holds a generation run's settings. Each output is enabled by its
@@ -262,6 +269,19 @@ func resolveStructure(e Entry) ([]Field, MetadataSource, error) {
 		meta = describedMeta
 	}
 	return fields, meta, nil
+}
+
+// typeName returns the Go type name of v with pointers dereferenced. It is an
+// entry's display title when Name is empty.
+func typeName(v any) string {
+	t := reflect.TypeOf(v)
+	if t == nil {
+		return ""
+	}
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	return t.Name()
 }
 
 // splitFor reports whether an entry's object fields get pages of their own:

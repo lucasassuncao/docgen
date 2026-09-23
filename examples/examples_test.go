@@ -1,13 +1,14 @@
-package docgen_test
+package examples
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/lucasassuncao/docgen"
 	"github.com/lucasassuncao/docgen/presets"
+	"github.com/lucasassuncao/docgen/spec"
 )
 
 type logConfig struct {
@@ -20,18 +21,16 @@ type categoryConfig struct {
 	Path string `yaml:"path"`
 }
 
-// generateExamples runs an examples-only generation. Example pages come from a
-// Examples rather than from the schema, so no entries are needed.
-func generateExamples(t *testing.T, dir string, src docgen.Examples, titles map[string]string) []docgen.GeneratedFile {
+func mustEmit(t *testing.T, dir string, src Source, titles map[string]string) []spec.GeneratedFile {
 	t.Helper()
-	files, err := docgen.Generate(nil, docgen.WithExamples(src, dir, titles))
+	files, err := Emit(src, dir, titles)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	return files
 }
 
-func TestExamples_OneFilePerField(t *testing.T) {
+func TestEmit_onePagePerField(t *testing.T) {
 	src := presets.Combine(
 		presets.ForField("configuration", map[string]*logConfig{
 			"console": {Output: "console", Level: "info"},
@@ -47,12 +46,11 @@ func TestExamples_OneFilePerField(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	files := generateExamples(t, dir, src, titles)
+	files := mustEmit(t, dir, src, titles)
 
 	if len(files) != 2 {
 		t.Fatalf("expected 2 files, got %d", len(files))
 	}
-
 	for _, name := range []string{"configuration.md", "category.md"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
 			t.Errorf("expected file %s to exist: %v", name, err)
@@ -60,29 +58,29 @@ func TestExamples_OneFilePerField(t *testing.T) {
 	}
 }
 
-func TestExamples_FileContentContainsPresets(t *testing.T) {
+func TestEmit_pageHoldsEveryPreset(t *testing.T) {
 	src := presets.ForField("configuration", map[string]*logConfig{
 		"console": {Output: "console", Level: "info"},
 		"file":    {Output: "file", Level: "warn"},
 	})
 
 	dir := t.TempDir()
-	generateExamples(t, dir, src, map[string]string{"configuration": "Configuration"})
+	mustEmit(t, dir, src, map[string]string{"configuration": "Configuration"})
 
-	body := readFile(t, filepath.Join(dir, "configuration.md"))
+	data, err := os.ReadFile(filepath.Join(dir, "configuration.md")) //nolint:gosec // test-controlled path
+	if err != nil {
+		t.Fatalf("read configuration.md: %v", err)
+	}
+	body := string(data)
 
-	if !strings.Contains(body, "## Preset: console") {
-		t.Error("configuration.md missing preset 'console'")
-	}
-	if !strings.Contains(body, "## Preset: file") {
-		t.Error("configuration.md missing preset 'file'")
-	}
-	if !strings.Contains(body, "```yaml") {
-		t.Error("configuration.md missing yaml code fence")
+	for _, want := range []string{"# Configuration Examples", "## Preset: console", "## Preset: file", "```yaml"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("configuration.md missing %q", want)
+		}
 	}
 }
 
-func TestExamples_SkipsFieldNotInTitles(t *testing.T) {
+func TestEmit_skipsFieldNotInTitles(t *testing.T) {
 	src := presets.Combine(
 		presets.ForField("configuration", map[string]*logConfig{
 			"console": {Output: "console", Level: "info"},
@@ -93,10 +91,7 @@ func TestExamples_SkipsFieldNotInTitles(t *testing.T) {
 	)
 
 	dir := t.TempDir()
-	files := generateExamples(t, dir, src, map[string]string{
-		"configuration": "Configuration",
-		// categories intentionally omitted
-	})
+	files := mustEmit(t, dir, src, map[string]string{"configuration": "Configuration"})
 
 	if len(files) != 1 {
 		t.Fatalf("expected 1 file, got %d", len(files))
@@ -106,42 +101,48 @@ func TestExamples_SkipsFieldNotInTitles(t *testing.T) {
 	}
 }
 
-func TestExamples_SkipsFieldWithNoPresets(t *testing.T) {
+func TestEmit_skipsFieldWithNoPresets(t *testing.T) {
 	src := presets.ForField("configuration", map[string]*logConfig{})
 
-	dir := t.TempDir()
-	files := generateExamples(t, dir, src, map[string]string{"configuration": "Configuration"})
+	files := mustEmit(t, t.TempDir(), src, map[string]string{"configuration": "Configuration"})
 
 	if len(files) != 0 {
 		t.Fatalf("expected 0 files, got %d", len(files))
 	}
 }
 
-func TestExamples_NoReadmeInExamplesDir(t *testing.T) {
+func TestEmit_writesNoReadme(t *testing.T) {
 	src := presets.ForField("configuration", map[string]*logConfig{
 		"console": {Output: "console", Level: "info"},
 	})
 
 	dir := t.TempDir()
-	generateExamples(t, dir, src, map[string]string{"configuration": "Configuration"})
+	mustEmit(t, dir, src, map[string]string{"configuration": "Configuration"})
 
 	if _, err := os.Stat(filepath.Join(dir, "README.md")); err == nil {
-		t.Error("README.md should not be generated inside examplesDir")
+		t.Error("README.md should not be generated inside the examples dir")
 	}
 }
 
-func TestExamples_FilenameIsLowercasedTitle(t *testing.T) {
+func TestEmit_filenameIsLowercasedTitle(t *testing.T) {
 	src := presets.ForField("categories", map[string]*categoryConfig{
 		"images": {Name: "photos", Path: "~/Downloads"},
 	})
 
 	dir := t.TempDir()
-	files := generateExamples(t, dir, src, map[string]string{"categories": "Category"})
+	files := mustEmit(t, dir, src, map[string]string{"categories": "Category"})
 
 	if len(files) != 1 || files[0].Name != "Category" {
 		t.Fatalf("expected 1 file named 'Category', got %v", files)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "category.md")); err != nil {
 		t.Error("expected file to be named category.md (lowercased title)")
+	}
+}
+
+func TestEmit_nilSourceIsAnError(t *testing.T) {
+	_, err := Emit(nil, t.TempDir(), map[string]string{"a": "A"})
+	if !errors.Is(err, ErrNoPresetSource) {
+		t.Fatalf("want ErrNoPresetSource, got %v", err)
 	}
 }
