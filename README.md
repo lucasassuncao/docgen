@@ -25,7 +25,7 @@
 | **Declared once** | Each type documents its own direct fields. A nested struct is picked up wherever it appears; a recursive one just works. |
 | **Layouts and columns you choose** | One page per type, per field, or one file. Show allowed values and constraints, or keep the default five columns. |
 | **Typos fail loudly** | A key matching no field is an error naming the type and the key, at startup. It never becomes dead documentation. |
-| **One dependency** | `gopkg.in/yaml.v3`. |
+| **One dependency** | `go.yaml.in/yaml/v3`. |
 
 ## Install
 
