@@ -126,7 +126,7 @@ And the same `logging.level` in the schema, from `oneof`, `default` and
 | `children` | map | metadata for nested fields the type cannot declare |
 | `kind`, `scalar` | string | the shape of a type reflection cannot read |
 
-`presentation`, `snippet` and `prechecked` are accepted and ignored: a key
+`presentation`, `snippet`, `prechecked` and `enablepicker` are accepted and ignored: a key
 another reader of the same `Metadata()` needs is not an error here.
 
 A union type — a value that is a string *or* an object — has no readable struct

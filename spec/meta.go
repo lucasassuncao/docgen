@@ -43,6 +43,7 @@ type FieldMeta struct {
 	Presentation string `yaml:"presentation"`
 	Snippet      string `yaml:"snippet"`
 	PreChecked   bool   `yaml:"prechecked"`
+	EnablePicker bool   `yaml:"enablepicker"`
 }
 
 // Node is one field's metadata plus the metadata of its children.

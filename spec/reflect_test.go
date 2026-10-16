@@ -89,6 +89,27 @@ func TestDescribe_unknownKeyIsAnError(t *testing.T) {
 	}
 }
 
+type editorKeysConfig struct {
+	Mode string `yaml:"mode"`
+}
+
+func (editorKeysConfig) Metadata() map[string]any {
+	return map[string]any{"mode": map[string]any{
+		"oneof": []string{"a", "b"}, "presentation": "flat", "snippet": "mode: a", "prechecked": true, "enablepicker": true,
+	}}
+}
+
+// Keys only an editor reads share the same Metadata(), so they are no error.
+func TestDescribe_acceptsEditorOnlyKeys(t *testing.T) {
+	_, meta, err := Describe(editorKeysConfig{})
+	if err != nil {
+		t.Fatalf("Describe: %v", err)
+	}
+	if got := meta.FieldMeta("mode").OneOf; len(got) != 2 {
+		t.Errorf("mode oneof = %v", got)
+	}
+}
+
 // mountOrString stands for a union: a mount is a string or an object, so
 // reflection cannot read its shape and Metadata declares it instead.
 type mountOrString struct {

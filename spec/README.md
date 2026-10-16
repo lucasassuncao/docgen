@@ -126,7 +126,7 @@ func Reflect(v any, recursionLimit ...int) []Field
 Reflect is Describe without its metadata, for callers that supply their own.
 
 <a name="FieldMeta"></a>
-## type [FieldMeta](<https://github.com/lucasassuncao/docgen/blob/main/spec/meta.go#L15-L46>)
+## type [FieldMeta](<https://github.com/lucasassuncao/docgen/blob/main/spec/meta.go#L15-L47>)
 
 FieldMeta is one field's declared meaning, decoded from the map a Provider returns. Every key is optional; an unknown one is an error naming it, so a typo cannot become silently dead metadata.
 
@@ -162,6 +162,7 @@ type FieldMeta struct {
     Presentation string `yaml:"presentation"`
     Snippet      string `yaml:"snippet"`
     PreChecked   bool   `yaml:"prechecked"`
+    EnablePicker bool   `yaml:"enablepicker"`
 }
 ```
 
@@ -209,7 +210,7 @@ const (
 ```
 
 <a name="MetaFunc"></a>
-## type [MetaFunc](<https://github.com/lucasassuncao/docgen/blob/main/spec/meta.go#L62>)
+## type [MetaFunc](<https://github.com/lucasassuncao/docgen/blob/main/spec/meta.go#L63>)
 
 MetaFunc adapts a plain function to MetadataSource.
 
@@ -218,7 +219,7 @@ type MetaFunc func(path string) FieldMeta
 ```
 
 <a name="MetaFunc.FieldMeta"></a>
-### func \(MetaFunc\) [FieldMeta](<https://github.com/lucasassuncao/docgen/blob/main/spec/meta.go#L65>)
+### func \(MetaFunc\) [FieldMeta](<https://github.com/lucasassuncao/docgen/blob/main/spec/meta.go#L66>)
 
 ```go
 func (f MetaFunc) FieldMeta(path string) FieldMeta
@@ -227,7 +228,7 @@ func (f MetaFunc) FieldMeta(path string) FieldMeta
 FieldMeta calls f.
 
 <a name="MetadataSource"></a>
-## type [MetadataSource](<https://github.com/lucasassuncao/docgen/blob/main/spec/meta.go#L57-L59>)
+## type [MetadataSource](<https://github.com/lucasassuncao/docgen/blob/main/spec/meta.go#L58-L60>)
 
 MetadataSource answers metadata for a field by its dot\-joined path from the documented type's root \("source", "source.path"\). The root itself is "". A zero FieldMeta means "nothing declared".
 
@@ -238,7 +239,7 @@ type MetadataSource interface {
 ```
 
 <a name="Node"></a>
-## type [Node](<https://github.com/lucasassuncao/docgen/blob/main/spec/meta.go#L49-L52>)
+## type [Node](<https://github.com/lucasassuncao/docgen/blob/main/spec/meta.go#L50-L53>)
 
 Node is one field's metadata plus the metadata of its children.
 
