@@ -26,7 +26,7 @@ Package presets builds a YAML preset source from Go structs. Each value is marsh
 
 
 <a name="FieldPresets"></a>
-## type [FieldPresets](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L36-L39>)
+## type [FieldPresets](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L37-L40>)
 
 FieldPresets is a single\-field Source returned by ForField.
 
@@ -37,7 +37,7 @@ type FieldPresets[T any] struct {
 ```
 
 <a name="ForField"></a>
-### func [ForField](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L31>)
+### func [ForField](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L32>)
 
 ```go
 func ForField[T any](field string, m map[string]T) *FieldPresets[T]
@@ -46,7 +46,7 @@ func ForField[T any](field string, m map[string]T) *FieldPresets[T]
 ForField wraps a map of Go structs as a single\-field Source. Each value is YAML\-marshaled under its field key when PresetYAML is called.
 
 <a name="FieldPresets[T].ListFields"></a>
-### func \(\*FieldPresets\[T\]\) [ListFields](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L41>)
+### func \(\*FieldPresets\[T\]\) [ListFields](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L42>)
 
 ```go
 func (p *FieldPresets[T]) ListFields() []string
@@ -55,7 +55,7 @@ func (p *FieldPresets[T]) ListFields() []string
 
 
 <a name="FieldPresets[T].ListPresets"></a>
-### func \(\*FieldPresets\[T\]\) [ListPresets](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L43>)
+### func \(\*FieldPresets\[T\]\) [ListPresets](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L44>)
 
 ```go
 func (p *FieldPresets[T]) ListPresets(field string) []string
@@ -64,7 +64,7 @@ func (p *FieldPresets[T]) ListPresets(field string) []string
 
 
 <a name="FieldPresets[T].PresetYAML"></a>
-### func \(\*FieldPresets\[T\]\) [PresetYAML](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L55>)
+### func \(\*FieldPresets\[T\]\) [PresetYAML](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L56>)
 
 ```go
 func (p *FieldPresets[T]) PresetYAML(field, name string) (string, error)
@@ -73,7 +73,7 @@ func (p *FieldPresets[T]) PresetYAML(field, name string) (string, error)
 
 
 <a name="Func"></a>
-## type [Func](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L127>)
+## type [Func](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L134>)
 
 Func adapts a plain function to the Source interface for dynamic preset lookup without enumeration. ListFields and ListPresets return nil, so the preset picker will not appear; only direct \(field, name\) lookups work.
 
@@ -82,7 +82,7 @@ type Func func(field, name string) (string, error)
 ```
 
 <a name="Func.ListFields"></a>
-### func \(Func\) [ListFields](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L129>)
+### func \(Func\) [ListFields](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L136>)
 
 ```go
 func (f Func) ListFields() []string
@@ -91,7 +91,7 @@ func (f Func) ListFields() []string
 
 
 <a name="Func.ListPresets"></a>
-### func \(Func\) [ListPresets](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L130>)
+### func \(Func\) [ListPresets](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L137>)
 
 ```go
 func (f Func) ListPresets(_ string) []string
@@ -100,7 +100,7 @@ func (f Func) ListPresets(_ string) []string
 
 
 <a name="Func.PresetYAML"></a>
-### func \(Func\) [PresetYAML](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L131>)
+### func \(Func\) [PresetYAML](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L138>)
 
 ```go
 func (f Func) PresetYAML(field, name string) (string, error)
@@ -109,7 +109,7 @@ func (f Func) PresetYAML(field, name string) (string, error)
 
 
 <a name="Source"></a>
-## type [Source](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L16-L27>)
+## type [Source](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L17-L28>)
 
 Source supplies YAML preset snippets keyed by \(field, preset name\). The editor uses it to populate the preset picker and to seed the YAML editor when a block is opened.
 
@@ -129,7 +129,7 @@ type Source interface {
 ```
 
 <a name="Combine"></a>
-### func [Combine](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L73>)
+### func [Combine](<https://github.com/lucasassuncao/docgen/blob/main/presets/source.go#L80>)
 
 ```go
 func Combine(sources ...Source) Source
